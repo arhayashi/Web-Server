@@ -28,6 +28,15 @@
 #define SERVER_WARN (0)
 #define SERVER_SUCC (1)
 
+#define HTTP_200(res, target, fc)                                \
+                (create_http_response(res, "HTTP/1.1 200 OK",    \
+                 get_mime_type(target), fc->content, fc->size))  \
+
+#define HTTP_500(res, message)                                         \
+                (create_http_response(res,                             \
+                 "HTTP/1.1 500 Internal Server Error",                 \
+                 "application/json", message, (strlen(message) + 1)))  \
+
 /*
  * This function verifies that an HTTP response was successfully created,
  * returning status if it was. If it wasn't, this function attempts to
@@ -172,6 +181,7 @@ int http_404(char *response, char *target, file_cont_t **file_cont) {
  * response argument.
  */
 
+
 int http_500(char *response) {
     if (response == NULL) {
         return SERVER_ERR;
@@ -252,8 +262,7 @@ int create_http_response(char *response, char *header, char *mime,
                       header, date, size, mime, content) + 1;
 
     if (status == -1) {
-        fprintf(stderr, "[ERROR] unable to create HTTP response with"
-                "snprintf()\n");
+        fprintf(stderr, "[ERROR] unable to create HTTP response\n");
         return SERVER_ERR;
     }
 
@@ -373,9 +382,37 @@ void handle_http_response(int client_socket, char *method, char *target,
     /* requesting content, send HTTP 200 */
 
     if (strcmp("GET", method) == 0) {
-        // if not in cache, get file normally
-        //
         file_cont_t *file_cont = search_cache(cache, target);
+
+        if (file_cont == NULL) {
+            file_cont = read_file_cont(target, &status);
+        }
+
+        /* successfully found file so try to send HTTP 200 */
+
+        if (file_cont != NULL) {
+            cache_push(cache, target, file_cont);
+
+            printf("[LOG] sending HTTP 200 OK\n");
+            status = HTTP_200(response, target, file_cont);
+
+            if (status == SERVER_ERR) {
+                fprintf(stderr, "[ERROR] encountered error while forming"
+                                "response\n");
+                status = HTTP_500(response, "Internal server error");
+
+                /* encountered error while creating server error response */
+
+                if (status == SERVER_ERR) {
+                    fprintf(stderr, "[ERROR] server error...terminating\n");
+                    return;
+                }
+            }
+
+            send_response(client_socket, response, status);
+        }
+
+        #if 0
 
         status = check_http_res(response,
                                 http_200(response, target, &file_cont));
@@ -392,6 +429,8 @@ void handle_http_response(int client_socket, char *method, char *target,
         free_file_cont_t(&file_cont);
 
         return;
+
+        #endif
     } 
 
     /* posting content, send POST response */
