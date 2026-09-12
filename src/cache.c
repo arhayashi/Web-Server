@@ -110,13 +110,13 @@ void delete_cache(cache_t **cache) {
  * This function inserts a node_t node to the beginning of the cache.
  */
 
-void insert_to_cache(cache_t *cache, char *target, file_cont_t *content) {
+void cache_push(cache_t *cache, char *target, file_cont_t *content) {
     printf("[LOG] adding target %s to cache\n", target);
 
     /* remove last entry if too many entries */
 
     if (cache->size >= cache->capacity) {
-        remove_from_cache(cache);
+        cache_remove(cache);
     }
 
     node_t *new_node = create_node_t(target, content);
@@ -139,13 +139,13 @@ void insert_to_cache(cache_t *cache, char *target, file_cont_t *content) {
     cache->head = new_node;
 
     cache->size += 1;
-} /* insert_to_cache() */
+} /* cache_push() */
 
 /*
  * This function removes the last entry from the cache.
  */
 
-void remove_from_cache(cache_t *cache) {
+void cache_remove(cache_t *cache) {
     node_t *tail_node = cache->tail;
 
     if (tail_node == NULL) {
@@ -161,7 +161,7 @@ void remove_from_cache(cache_t *cache) {
     free_node_t(&tail_node);
 
     cache->size -=1;
-} /* remove_from_cache() */
+} /* cache_remove() */
 
 /*
  * This function searches the cache for the node_t entry with the given target.
@@ -205,17 +205,15 @@ file_cont_t *search_cache(cache_t *cache, char *target) {
     return NULL;
 } /* search_cache() */
 
-#if 0
-
 int main(void) {
     cache_t *cache = create_cache(10, 0);
     node_t *p;
 
     printf("inserting...\n");
 
-    insert_to_cache(cache, "/1", NULL);
-    insert_to_cache(cache, "/2", NULL);
-    insert_to_cache(cache, "/3", NULL);
+    cache_push(cache, "/1", NULL);
+    cache_push(cache, "/2", NULL);
+    cache_push(cache, "/3", NULL);
 
     p = cache->head;
 
@@ -226,7 +224,7 @@ int main(void) {
 
     printf("removing...\n");
 
-    remove_from_cache(cache);
+    cache_remove(cache);
 
     p = cache->head;
 
@@ -239,5 +237,3 @@ int main(void) {
 
     delete_cache(&cache);
 }
-
-#endif

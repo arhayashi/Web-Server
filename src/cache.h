@@ -28,7 +28,7 @@ cache_t *create_cache(int, int);
 node_t *create_node_t(char *, file_cont_t *);
 void delete_cache(cache_t **);
 void free_node_t(node_t **);
-void insert_to_cache(cache_t *, char *, file_cont_t *);
-void remove_from_cache(cache_t *);
+void cache_push(cache_t *, char *, file_cont_t *);
+void cache_remove(cache_t *);
 
 #endif
