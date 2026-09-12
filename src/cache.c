@@ -205,6 +205,8 @@ file_cont_t *search_cache(cache_t *cache, char *target) {
     return NULL;
 } /* search_cache() */
 
+#if 0
+
 int main(void) {
     cache_t *cache = create_cache(10, 0);
     node_t *p;
@@ -237,3 +239,5 @@ int main(void) {
 
     delete_cache(&cache);
 }
+
+#endif

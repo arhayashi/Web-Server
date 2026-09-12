@@ -24,11 +24,12 @@ typedef struct {
     int expr;             /* after how long to expire entries */
 } cache_t;
 
+void cache_push(cache_t *, char *, file_cont_t *);
+void cache_remove(cache_t *);
 cache_t *create_cache(int, int);
 node_t *create_node_t(char *, file_cont_t *);
 void delete_cache(cache_t **);
 void free_node_t(node_t **);
-void cache_push(cache_t *, char *, file_cont_t *);
-void cache_remove(cache_t *);
+file_cont_t *search_cache(cache_t *, char *);
 
 #endif

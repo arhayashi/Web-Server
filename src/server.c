@@ -17,7 +17,7 @@ int main() {
         int client_socket = get_client_socket(server_socket);
         printf("client socket: %d\n", client_socket);
 
-        handle_http_request(client_socket);
+        handle_http_request(client_socket, cache);
 
         close(client_socket);
     }

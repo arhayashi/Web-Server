@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <time.h>
 
+#include "cache.h"
 #include "http.h"
 #include "mime.h"
 #include "process_file.h"
@@ -273,7 +274,9 @@ int create_http_response(char *response, char *header, char *mime,
  */
 
 void parse_http_request(char *request, char *method, char *target) {
-    if ((request == NULL) || ((method == NULL) || (target == NULL)) {
+    if ((request == NULL) ||
+        ((method == NULL) ||
+         (target == NULL))) {
         fprintf(stderr, "[ERROR] unable to parse HTTP request\n");
         return;
     }
@@ -311,7 +314,7 @@ void parse_http_request(char *request, char *method, char *target) {
  * the method and requested target, and formulating an appropriate response.
  */
 
-void handle_http_request(int client_socket) {
+void handle_http_request(int client_socket, cache_t *cache) {
     int status;
 
     char request[REQ_LEN] = { '\0' };
@@ -338,14 +341,15 @@ void handle_http_request(int client_socket) {
 
     parse_http_request(request, method, target);
 
-    handle_http_response(client_socket, method, target);
+    handle_http_response(client_socket, method, target, cache);
 } /* handle_http_request() */
 
 /*
  * Test
  */
 
-void handle_http_response(int client_socket, char *method, char *target) {
+void handle_http_response(int client_socket, char *method, char *target,
+                          cache_t *cache) {
     int status;
     char response[RES_LEN] = { '\0' };
 
@@ -369,9 +373,9 @@ void handle_http_response(int client_socket, char *method, char *target) {
     /* requesting content, send HTTP 200 */
 
     if (strcmp("GET", method) == 0) {
-        // check if in cache
         // if not in cache, get file normally
-        file_cont_t *file_cont = NULL;
+        //
+        file_cont_t *file_cont = search_cache(cache, target);
 
         status = check_http_res(response,
                                 http_200(response, target, &file_cont));
