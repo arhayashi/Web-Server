@@ -349,28 +349,28 @@ void handle_http_response(int client_socket, char *method, char *target) {
     int status;
     char response[RES_LEN] = { '\0' };
 
-    /* true if parsing request failed which indicates malformed request */
+    /* malformed request, send HTTP 400 */
 
     if ((strlen(method) == 0) || (strlen(target) == 0)) {
         status = check_http_res(response, http_400(response));
 
-        /* indicates unrecoverable server error so should terminate */
-
         if (status == SERVER_ERR) {
-            fprintf(stderr, "[ERROR] terminating in handle_http_response()\n");
+            fprintf(stderr, "[ERROR] server error...terminating\n");
             return;
         }
 
-        /* here, status is the size if successfully created response */
+        /* status is size of response */
 
         send_response(client_socket, response, status);
 
         return;
     }
 
-    /* handle attempting to send HTTP 200 response or error response */
+    /* requesting content, send HTTP 200 */
 
     if (strcmp("GET", method) == 0) {
+        // check if in cache
+        // if not in cache, get file normally
         file_cont_t *file_cont = NULL;
 
         status = check_http_res(response,
@@ -390,7 +390,7 @@ void handle_http_response(int client_socket, char *method, char *target) {
         return;
     } 
 
-    /* handles POST response */
+    /* posting content, send POST response */
 
     if (strcmp("POST", method) == 0) {
 
