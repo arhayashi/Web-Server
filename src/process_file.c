@@ -75,7 +75,8 @@ file_cont_t *read_file_cont(char *file, int *indicator) {
     FILE *fd = fopen(file, "rb");
 
     if (fd == NULL) {
-        fprintf(stderr, "[WARNING] file unable to be read or doesn't exist\n");
+        fprintf(stderr, "[LOG] %s unable to be read or does not exist\n",
+                file);
         *indicator = FILE_NEXS;
         return NULL;
     }
@@ -95,7 +96,7 @@ file_cont_t *read_file_cont(char *file, int *indicator) {
     /* if directory, will try to access dir/index.html in http.c */
 
     if (S_ISDIR(file_stats.st_mode)) {
-        fprintf(stderr, "[WARNING] attempting to access directory\n");
+        fprintf(stderr, "[LOG] %s is a directory\n", file);
         *indicator = FILE_DIR;
         close_file(&fd);
         return NULL;
