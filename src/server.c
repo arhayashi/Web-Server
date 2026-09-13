@@ -11,7 +11,9 @@ int main() {
     int server_socket = get_server_socket();
     printf("server socket: %d\n", server_socket);
 
-    cache_t *cache = create_cache(10, 1000);
+    /* capacity of ten and expire entries after two minutes */
+
+    cache_t *cache = create_cache(10, 120);
 
     while (1) {
         int client_socket = get_client_socket(server_socket);
