@@ -77,6 +77,12 @@ int get_server_socket() {
 
     if (tmp_addr == NULL) {
         fprintf(stderr, "[ERROR] unable to find connectable address\n");
+
+        /* prints end of serving starting header in server.c */
+
+        printf("\n\n");
+        printf("************************************************************"
+               "****");
         exit(1);
     }
 
@@ -85,8 +91,18 @@ int get_server_socket() {
     if (status == -1) {
         fprintf(stderr, "[ERROR] unable to listen with server socket\n");
         close(sockfd);
+        printf("\n\n");
+        printf("************************************************************"
+               "****");
         exit(1);
     }
+
+    #if 0
+    char ip[INET6_ADDRSTRLEN] = { '\0' };
+    inet_ntop(tmp_addr->ai_family, NULL, ip, sizeof(ip));
+    pritnf("> Server started with IP %s\n", ip);
+
+    #endif
 
     return sockfd;
 } /* get_server_socket() */

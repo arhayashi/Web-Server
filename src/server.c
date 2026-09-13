@@ -8,12 +8,25 @@
 #include "net.h"
 
 int main() {
-    int server_socket = get_server_socket();
-    printf("server socket: %d\n", server_socket);
+    printf("****************************************************************");
+    printf("\n\n");
+
+    printf("> Starting server...\n");
+
+    int server_socket = get_server_socket(); /* prints IP */
 
     /* capacity of ten and expire entries after two minutes */
 
     cache_t *cache = create_cache(10, 120);
+
+    if (cache != NULL) {
+        printf("> Created server cache...\n");
+    } else {
+        printf("> Unable to created server cache...\n");
+    }
+
+    printf("\n\n");
+    printf("****************************************************************");
 
     while (1) {
         int client_socket = get_client_socket(server_socket);
