@@ -32,10 +32,14 @@
                 (create_http_response(res, "HTTP/1.1 200 OK",    \
                  get_mime_type(target), fc->content, fc->size))  \
 
+#define HTTP_404(res, fc)                                             \
+                (create_http_response(res, "HTTP/1.1 404 Not Found",  \
+                 get_mime_type(FILE_404), fc->content, fc->size))     \
+
 #define HTTP_500(res, message)                                         \
                 (create_http_response(res,                             \
                  "HTTP/1.1 500 Internal Server Error",                 \
-                 "application/json", message, (strlen(message) + 1)))  \
+                 "text/plain", message, (strlen(message) + 1)))        \
 
 /*
  * This function verifies that an HTTP response was successfully created,
@@ -48,24 +52,26 @@
  * attempted to be created and is being error checked.
  */
 
-int check_http_res(char *response, int status) {
+int check_res(char *response, int status) {
     if (status != SERVER_ERR) {
         return status;
     }
 
-    status = http_500(response);
+    fprintf(stderr, "[ERROR] encountered error while forming "
+                    "response\n");
+
+    status = HTTP_500(response, "Internal server error");
 
     if (status == SERVER_ERR) {
-        fprintf(stderr, "[ERROR] could not create an HTTP 500 Internal Server "
-                        "Error response...critical error\n");
+        fprintf(stderr, "[ERROR] server error...terminating\n");
         return SERVER_ERR;
     }
 
-    fprintf(stderr, "[WARNING] response now contains an HTTP 500 Internal "
-                    " Server Error response\n");
+    fprintf(stderr, "[WARNING] response now contains HTTP 500 Internal "
+                    "Server Error\n");
 
     return status;
-} /* check_http_res() */
+} /* check_res() */
 
 /*
  * Creates a HTTP 200 OK response, putting it into the response argument.
@@ -158,6 +164,7 @@ int http_400(char *response) {
  * Creates an HTTP 404 Not Found response, putting it into the response
  * argument.
  */
+
 
 int http_404(char *response, char *target, file_cont_t **file_cont) {
     fprintf(stderr, "[WARNING] sending HTTP 404 Not Found response\n");
@@ -365,7 +372,7 @@ void handle_http_response(int client_socket, char *method, char *target,
     /* malformed request, send HTTP 400 */
 
     if ((strlen(method) == 0) || (strlen(target) == 0)) {
-        status = check_http_res(response, http_400(response));
+        status = check_res(response, http_400(response));
 
         if (status == SERVER_ERR) {
             fprintf(stderr, "[ERROR] server error...terminating\n");
@@ -382,6 +389,8 @@ void handle_http_response(int client_socket, char *method, char *target,
     /* requesting content, send HTTP 200 */
 
     if (strcmp("GET", method) == 0) {
+        printf("[LOG] handling GET request for %s\n", target);
+
         file_cont_t *file_cont = search_cache(cache, target);
 
         if (file_cont == NULL) {
@@ -393,44 +402,142 @@ void handle_http_response(int client_socket, char *method, char *target,
         if (file_cont != NULL) {
             cache_push(cache, target, file_cont);
 
-            printf("[LOG] sending HTTP 200 OK\n");
-            status = HTTP_200(response, target, file_cont);
+            status = check_res(response, HTTP_200(response, target,
+                                                  file_cont));
 
             if (status == SERVER_ERR) {
-                fprintf(stderr, "[ERROR] encountered error while forming"
-                                "response\n");
-                status = HTTP_500(response, "Internal server error");
+                free_file_cont_t(&file_cont);
+                return;
+            }
 
-                /* encountered error while creating server error response */
+            printf("[LOG] sending HTTP 200 OK\n");
+            send_response(client_socket, response, status);
+
+            return;
+        }
+
+        /* requested target is a directory so try to auto serve ./index.html */
+
+        if ((file_cont == NULL) && (status == FILE_DIR)) {
+            int remaining_size = (TARGET_LEN - strlen(target)) - 1;
+
+            /* target has the modified target */
+
+            strncat(target, DEFAULT_FILE, remaining_size);
+
+            printf("[LOG] attempting to serve %s\n", target);
+
+            file_cont = search_cache(cache, target);
+
+            if (file_cont == NULL) {
+                file_cont = read_file_cont(target, &status);
+            }
+
+            /* success, send HTTP 200 OK */
+
+            if (file_cont != NULL) {
+                cache_push(cache, target, file_cont);
+
+                status = check_res(response, HTTP_200(response, target,
+                                                      file_cont));
 
                 if (status == SERVER_ERR) {
-                    fprintf(stderr, "[ERROR] server error...terminating\n");
+                    free_file_cont_t(&file_cont);
                     return;
                 }
+
+                printf("[LOG] sending HTTP 200 OK\n");
+                send_response(client_socket, response, status);
+
+                return;
+            }
+
+            /* cannot find, send HTTP 404 Not Found */
+
+            if ((file_cont == NULL) && (status == FILE_NEXS)) {
+                file_cont = search_cache(cache, FILE_404);
+
+                if (file_cont == NULL) {
+                    file_cont = read_file_cont(FILE_404, &status);
+                }
+
+                if (file_cont != NULL) {
+                    cache_push(cache, FILE_404, file_cont);
+
+                    status = check_res(response,
+                                       HTTP_404(response, file_cont));
+
+                    if (status == SERVER_ERR) {
+                        free_file_cont_t(&file_cont);
+                        return;
+                    }
+
+                    printf("[LOG] sending HTTP 404 Not Found\n");
+                    send_response(client_socket, response, status);
+
+                    return;
+                }
+
+                /* can fall thru here because should send HTTP 500 if cannot */
+                /* find 404 file */
+            }
+
+            /* in all other cases, send HTTP 500 */
+
+            status = check_res(response, HTTP_500(response,
+                                                  "Internal server error"));
+
+            if (status == SERVER_ERR) {
+                free_file_cont_t(&file_cont);
+                return;
             }
 
             send_response(client_socket, response, status);
+
+            return;
         }
 
-        #if 0
+        /* file non-existent and is not directory so send HTTP 404 */
 
-        status = check_http_res(response,
-                                http_200(response, target, &file_cont));
+        if ((file_cont == NULL) && (status == FILE_NEXS)) {
+            file_cont = search_cache(cache, FILE_404);
+
+            if (file_cont == NULL) {
+                file_cont = read_file_cont(FILE_404, &status);
+            }
+
+            if (file_cont != NULL) {
+                cache_push(cache, FILE_404, file_cont);
+                status = check_res(response, HTTP_404(response, file_cont));
+
+                if (status == SERVER_ERR) {
+                    free_file_cont_t(&file_cont);
+                    return;
+                }
+
+                printf("[LOG] sending HTTP 404 Not Found\n");
+                send_response(client_socket, response, status);
+
+                return;
+            }
+
+            /* can fall thru here because should send HTTP 500 if cannot */
+            /* find 404 file */
+        }
+
+        /* in all other cases */
+
+        status = check_res(response, HTTP_500(response,
+                                              "Internal server error"));
+
         if (status == SERVER_ERR) {
-            fprintf(stderr, "[ERROR] terminating in handle_http_response()\n");
             free_file_cont_t(&file_cont);
             return;
         }
 
-        /* here, status size of response */
-
         send_response(client_socket, response, status);
 
-        free_file_cont_t(&file_cont);
-
         return;
-
-        #endif
     } 
 
     /* posting content, send POST response */

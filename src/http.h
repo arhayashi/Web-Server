@@ -4,7 +4,7 @@
 
 #include "process_file.h"
 
-int check_http_res(char *, int);
+int check_res(char *, int);
 int create_http_response(char *, char *, char *, char *, int); //
 void handle_http_request(int, cache_t *); //
 void handle_http_response(int, char *, char *, cache_t *);
