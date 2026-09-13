@@ -78,8 +78,8 @@ void free_node_t(node_t **node) {
         return;
     }
 
-    // FRee file_cont_t ???
-
+    free(((*node)->content)->content);
+    free((*node)->content);
     free((*node)->target);
     free(*node);
     *node = NULL;
@@ -111,8 +111,6 @@ void delete_cache(cache_t **cache) {
  */
 
 void cache_push(cache_t *cache, char *target, file_cont_t *content) {
-    printf("[LOG] adding target %s to cache\n", target);
-
     /* remove last entry if too many entries */
 
     if (cache->size >= cache->capacity) {
@@ -122,7 +120,7 @@ void cache_push(cache_t *cache, char *target, file_cont_t *content) {
     node_t *new_node = create_node_t(target, content);
 
     if (new_node == NULL) {
-        fprintf(stderr, "[WARNING] unable to add requested target to cache\n");
+        fprintf(stderr, "[WARNING] unable to add %s to cache\n", target);
         return;
     }
 
@@ -139,6 +137,8 @@ void cache_push(cache_t *cache, char *target, file_cont_t *content) {
     cache->head = new_node;
 
     cache->size += 1;
+
+    printf("[LOG] added %s to cache\n", target);
 } /* cache_push() */
 
 /*
@@ -189,18 +189,18 @@ file_cont_t *search_cache(cache_t *cache, char *target) {
     while (entry != NULL) {
         if (strcmp(entry->target, target) == 0) {
             if (difftime(curr_time, entry->created_at) > cache->expr) {
-                printf("[LOG] cache miss...entry expired\n");
+                printf("[LOG] cache miss...%s entry expired\n", target);
                 return NULL;
             }
 
-            printf("[LOG] cache hit\n");
+            printf("[LOG] cache hit for %s\n", target);
             return entry->content;
         }
 
         entry = entry->next;
     }
 
-    printf("[LOG] cache miss\n");
+    printf("[LOG] cache miss for %s\n", target);
 
     return NULL;
 } /* search_cache() */
