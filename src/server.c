@@ -25,7 +25,7 @@ int main() {
         printf("> Unable to created server cache...\n");
     }
 
-    printf("\n\n");
+    printf("\n");
     printf("****************************************************************");
 
     while (1) {
