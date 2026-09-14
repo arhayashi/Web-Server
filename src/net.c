@@ -4,6 +4,7 @@
  * server.
  */
 
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,12 +98,10 @@ int get_server_socket() {
         exit(1);
     }
 
-    #if 0
     char ip[INET6_ADDRSTRLEN] = { '\0' };
-    inet_ntop(tmp_addr->ai_family, NULL, ip, sizeof(ip));
-    pritnf("> Server started with IP %s\n", ip);
-
-    #endif
+    get_ip(tmp_addr->ai_addr, ip, sizeof(ip));
+    ip[sizeof(ip) - 1] = '\0';
+    printf("> Server started with IP %s\n", ip);
 
     return sockfd;
 } /* get_server_socket() */
@@ -124,5 +123,29 @@ int get_client_socket(int server_socket) {
         exit(1);
     }
     
+    char ip[INET6_ADDRSTRLEN] = { '\0' };
+    get_ip((struct sockaddr *)&client_sockaddr, ip, sizeof(ip));
+    ip[sizeof(ip) - 1] = '\0';
+    printf("cli ip: %s\n");
+    
     return sockfd;
 } /* get_client_socket() */
+
+/*
+ * This function gets the IP given by the addr, and puts it into the buf.
+ */
+
+void get_ip(struct sockaddr *addr, char *buf, int buf_size) {
+    char ip[INET6_ADDRSTRLEN] = { '\0' };
+
+    if (addr->sa_family == AF_INET) {
+        inet_ntop(AF_INET, &(((struct sockaddr_in *)addr)->sin_addr), ip,
+                  sizeof(ip));
+    } else {
+        inet_ntop(AF_INET6,
+                  &(((struct sockaddr_in6 *)addr)->sin6_addr), ip,
+                  sizeof(ip));
+    }
+
+    strncpy(buf, ip, buf_size);
+} /* print_ip() */
