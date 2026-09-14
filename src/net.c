@@ -31,7 +31,7 @@ int get_server_socket() {
 
     memset(&hints, 0, sizeof(hints));
 
-    hints.ai_flags = AI_PASSIVE;        /* use loopback address */
+    hints.ai_flags = AI_PASSIVE;        /* bind to local interface */
     hints.ai_family = AF_UNSPEC;        /* use IPv4 or IPv6 */
     hints.ai_socktype = SOCK_STREAM;
 
@@ -45,7 +45,8 @@ int get_server_socket() {
     struct addrinfo *tmp_addr = NULL;
 
     for (tmp_addr = res; tmp_addr != NULL; tmp_addr = tmp_addr->ai_next) {
-        sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+        sockfd = socket(tmp_addr->ai_family, tmp_addr->ai_socktype,
+                        tmp_addr->ai_protocol);
 
         if (sockfd == -1) {
             fprintf(stderr, "[WARNING] unable to create server socket\n");
@@ -61,7 +62,7 @@ int get_server_socket() {
             continue;
         }
 
-        status = bind(sockfd, res->ai_addr, res->ai_addrlen);
+        status = bind(sockfd, tmp_addr->ai_addr, tmp_addr->ai_addrlen);
 
         if (status == -1) {
             fprintf(stderr, "[WARNING] unable to bind server socket\n");
@@ -72,7 +73,6 @@ int get_server_socket() {
         break;
     }
 
-    freeaddrinfo(res);
 
     /* indicates no address found */
 
@@ -81,9 +81,10 @@ int get_server_socket() {
 
         /* prints end of serving starting header in server.c */
 
-        printf("\n\n");
+        printf("\n");
         printf("************************************************************"
-               "****");
+               "****\n\n");
+        freeaddrinfo(res);
         exit(1);
     }
 
@@ -92,9 +93,10 @@ int get_server_socket() {
     if (status == -1) {
         fprintf(stderr, "[ERROR] unable to listen with server socket\n");
         close(sockfd);
-        printf("\n\n");
+        printf("\n");
         printf("************************************************************"
-               "****");
+               "****\n\n");
+        freeaddrinfo(res);
         exit(1);
     }
 
@@ -102,6 +104,8 @@ int get_server_socket() {
     get_ip(tmp_addr->ai_addr, ip, sizeof(ip));
     ip[sizeof(ip) - 1] = '\0';
     printf("> Server started with IP %s\n", ip);
+
+    freeaddrinfo(res);
 
     return sockfd;
 } /* get_server_socket() */
@@ -126,7 +130,7 @@ int get_client_socket(int server_socket) {
     char ip[INET6_ADDRSTRLEN] = { '\0' };
     get_ip((struct sockaddr *)&client_sockaddr, ip, sizeof(ip));
     ip[sizeof(ip) - 1] = '\0';
-    printf("cli ip: %s\n");
+    printf("[LOG] client connection from %s\n", ip);
     
     return sockfd;
 } /* get_client_socket() */
