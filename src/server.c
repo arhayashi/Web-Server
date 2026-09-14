@@ -25,6 +25,8 @@ int main() {
         printf("> Unable to created server cache...\n");
     }
 
+    printf("> Server listening for incoming connections...\n");
+
     printf("\n");
     printf("****************************************************************\n"
            "\n");
