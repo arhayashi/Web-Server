@@ -28,16 +28,20 @@ int main() {
     printf("> Server listening for incoming connections...\n");
 
     printf("\n");
-    printf("****************************************************************\n"
-           "\n");
+    printf("****************************************************************");
+    printf("\n\n");
 
     while (1) {
         int client_socket = get_client_socket(server_socket);
-        printf("client socket: %d\n", client_socket);
 
         handle_http_request(client_socket, cache);
 
         close(client_socket);
+        
+        printf("\n");
+        printf("--------------------------------------------------------------"
+               "--");
+        printf("\n\n");
     }
 
     close(server_socket);
