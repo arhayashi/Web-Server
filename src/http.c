@@ -357,6 +357,8 @@ void handle_http_request(int client_socket, cache_t *cache) {
 
     parse_http_request(request, method, target);
 
+    // printf("request: \n%s\n", request);
+
     handle_http_response(client_socket, method, target, cache);
 } /* handle_http_request() */
 
@@ -543,7 +545,7 @@ void handle_http_response(int client_socket, char *method, char *target,
     /* posting content, send POST response */
 
     if (strcmp("POST", method) == 0) {
-
+        printf("[LOG] handling POST request\n");
     } 
 } /* handle_http_response() */
 
