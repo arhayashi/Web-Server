@@ -16,6 +16,6 @@ Some notable features include the following:
 
 ## Usage
 
-First, clone or download and unzip the repository. Then, run 'make all' and
-then './server'. The server will be running on port 3000 by default, and can be
-accessed via a web browser through 'http://localhost:3000'.
+First, clone or download and unzip the repository. Then, run `make all` and
+then `./server`. The server will be running on port 3000 by default, and can be
+accessed via a web browser through `http://localhost:3000`.
