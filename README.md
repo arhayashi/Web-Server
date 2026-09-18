@@ -13,6 +13,9 @@ Some notable features include the following:
 - Automatic index.html serving
 - File caching
 - 404 response page
+- Server logging
+
+## Things to Try
 
 ## Usage
 
