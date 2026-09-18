@@ -12,9 +12,10 @@ Some notable features include the following:
 
 - Automatic index.html serving
 - File caching
-- 404 Response page
+- 404 response page
 
 ## Usage
 
-`make all`
-`./server`
+First, clone or download and unzip the repository. Then, run 'make all' and
+then './server'. The server will be running on port 3000 by default, and can be
+accessed via a web browser through 'http://localhost:3000'.
