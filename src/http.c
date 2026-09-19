@@ -218,18 +218,17 @@ int http_500(char *response) {
 
 int create_http_response(char *response, char *header, char *mime,
                          char *content, int size) {
-    if (((response == NULL) || (header == NULL)) ||
-        ((mime == NULL) || (content == NULL))) {
-        return SERVER_ERR;
-    }
+    if (response == NULL) return SERVER_ERR;
+    if (header == NULL) return  SERVER_ERR;
+    if (mime == NULL) return SERVER_ERR;
+    if (content == NULL) return SERVER_ERR;
 
     int status; 
-    int tot_bytes = 0;
 
     time_t secs = time(NULL);
 
     if (secs == -1) {
-        fprintf(stderr, "[WARNING] unable to get time with time()...leaving"
+        fprintf(stderr, "[WARNING] unable to get time...leaving"
                         "date blank in HTTP response");
     }
 
@@ -237,51 +236,57 @@ int create_http_response(char *response, char *header, char *mime,
 
     if (secs != -1) {
         curr_time = gmtime(&secs);  /* time in GMT */
+
         if (curr_time == NULL) {
-            fprintf(stderr, "[WARNING] unable to transform time with gmtime()"
-                            "...leaving date blank in HTTP response");
+            fprintf(stderr, "[WARNING] unable to transform time...leaving date"
+                            "blank in HTTP response");
         }
     }
 
     char date[DATE_LEN] = { '\0' };
     
-    if ((secs != -1) && (curr_time != NULL)) {
-        /* formats date like Sun, 16 Aug 2026 14:48:37 GMT */
-        /* add 1 because returns number bytes written excluding NUL byte */
+    if (curr_time != NULL) {
+        /* formats date in GMT */
 
         status = strftime(date, sizeof(date), "%a, %d %b %Y %T GMT",
-                          curr_time) + 1;
+                          curr_time);
         if (status == 0) {
             fprintf(stderr, "[WARNING] date too long...leaving date blank in"
                     "HTTP response");
         }
-
-        tot_bytes += status;
     }
 
-    status = snprintf(response, RES_LEN,
-                      "%s\n"                  /* HTTP status code */
-                      "Date: %s\n"            /* formatted date */
-                      "Connection: close\n"   /* close TCP connection */
-                      "Content-Length: %d\n"  /* not including header */
-                      "Content-Type: %s\n\n"  /* mime type */
-                      "%s",                   /* content */
-                      header, date, size, mime, content) + 1;
+    /* creates header and tracks size, excluding the NUL terminator */
 
-    if (status == -1) {
+    int header_size = snprintf(response, RES_LEN,
+            "%s\r\n"                        /* HTTP status code and msg */
+            "Date: %s\r\n"                  /* formatted date */
+            "Connection: close\r\n"         /* close TCP connection */
+            "Content-Length: %d\r\n"        /* not including header */
+            "Content-Type: %s\r\n"          /* mime type */
+            "\r\n",                         /* separate cont from header */ 
+            header, date, size, mime);
+
+    if (header_size < 0) {
         fprintf(stderr, "[ERROR] unable to create HTTP response\n");
         return SERVER_ERR;
     }
 
-    if (status >= RES_LEN) {
-        fprintf(stderr, "[WARNING] HTTP response too long...truncating"
-                "response\n");
-        return RES_LEN;
+    if (header_size >= RES_LEN) {
+        fprintf(stderr, "[ERROR] HTTP header too long\n");
+        return SERVER_ERR;
     }
 
-    tot_bytes += status;
+    if (header_size + size > RES_LEN) {
+        fprintf(stderr, "[ERROR] HTTP response too long\n");
+        return SERVER_ERR;
+    }
 
-    return tot_bytes;
+    /* add content to response starting at the NUL terminator from header */
+
+    memcpy(response + header_size, content, size);
+
+    return header_size + size;
 } /* create_http_response() */
 
 /*
@@ -414,6 +419,8 @@ void handle_http_response(int client_socket, char *method, char *target,
 
             printf("[LOG] sending HTTP 200 OK\n");
             send_response(client_socket, response, status);
+
+            printf("response: \n\n%s", response);
 
             return;
         }
