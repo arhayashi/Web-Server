@@ -53,6 +53,8 @@
  */
 
 int check_res(char *response, int status) {
+    /* simply pass HTTP response if there was no error creating it */
+
     if (status != SERVER_ERR) {
         return status;
     }
@@ -69,6 +71,8 @@ int check_res(char *response, int status) {
 
     fprintf(stderr, "[WARNING] response now contains HTTP 500 Internal "
                     "Server Error\n");
+
+    /* status is the length of the HTTP response */
 
     return status;
 } /* check_res() */
@@ -409,6 +413,8 @@ void handle_http_response(int client_socket, char *method, char *target,
         if (file_cont != NULL) {
             cache_push(cache, target, file_cont);
 
+            printf("[LOG] attempting to send HTTP 200 OK\n");
+
             status = check_res(response, HTTP_200(response, target,
                                                   file_cont));
 
@@ -417,7 +423,6 @@ void handle_http_response(int client_socket, char *method, char *target,
                 return;
             }
 
-            printf("[LOG] sending HTTP 200 OK\n");
             send_response(client_socket, response, status);
 
             printf("response: \n\n%s", response);
@@ -446,6 +451,8 @@ void handle_http_response(int client_socket, char *method, char *target,
 
             if (file_cont != NULL) {
                 cache_push(cache, target, file_cont);
+                
+                printf("[LOG] attempting to send HTTP 200 OK\n");
 
                 status = check_res(response, HTTP_200(response, target,
                                                       file_cont));
@@ -455,7 +462,6 @@ void handle_http_response(int client_socket, char *method, char *target,
                     return;
                 }
 
-                printf("[LOG] sending HTTP 200 OK\n");
                 send_response(client_socket, response, status);
 
                 return;
@@ -473,6 +479,8 @@ void handle_http_response(int client_socket, char *method, char *target,
                 if (file_cont != NULL) {
                     cache_push(cache, FILE_404, file_cont);
 
+                    printf("[LOG] attempting to send HTTP 404 Not Found\n");
+
                     status = check_res(response,
                                        HTTP_404(response, file_cont));
 
@@ -481,7 +489,6 @@ void handle_http_response(int client_socket, char *method, char *target,
                         return;
                     }
 
-                    printf("[LOG] sending HTTP 404 Not Found\n");
                     send_response(client_socket, response, status);
 
                     return;
@@ -517,6 +524,9 @@ void handle_http_response(int client_socket, char *method, char *target,
 
             if (file_cont != NULL) {
                 cache_push(cache, FILE_404, file_cont);
+
+                printf("[LOG] attempting to send HTTP 404 Not Found\n");
+
                 status = check_res(response, HTTP_404(response, file_cont));
 
                 if (status == SERVER_ERR) {
@@ -524,7 +534,6 @@ void handle_http_response(int client_socket, char *method, char *target,
                     return;
                 }
 
-                printf("[LOG] sending HTTP 404 Not Found\n");
                 send_response(client_socket, response, status);
 
                 return;
