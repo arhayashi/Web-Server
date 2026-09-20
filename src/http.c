@@ -299,10 +299,8 @@ int create_http_response(char *response, char *header, char *mime,
  */
 
 void parse_http_request(char *request, char *method, char *target) {
-    if ((request == NULL) ||
-        ((method == NULL) ||
-         (target == NULL))) {
-        fprintf(stderr, "[ERROR] unable to parse HTTP request\n");
+    if ((request == NULL) || (method == NULL) || (target == NULL)) {
+        fprintf(stderr, "[ERROR] error while parsing HTTP request\n");
         return;
     }
 
@@ -335,28 +333,24 @@ void parse_http_request(char *request, char *method, char *target) {
 } /* parse_http_request() */
 
 /*
- * Handles the HTTP request from the client by storing it in a buffer, parsing
- * the method and requested target, and formulating an appropriate response.
+ * This function handles an HTTP request by receiving it from the given
+ * client_socket and extracting the method and target from it. It then passes
+ * those values, along with the cache pointer, to the handle_http_response()
+ * function.
  */
 
 void handle_http_request(int client_socket, cache_t *cache) {
     int status;
 
     char request[REQ_LEN] = { '\0' };
+    
+    /* size = REQ_LEN - 1 so the request is NUL terminated */
+   
+    status = recv_request(client_socket, request, REQ_LEN - 1);
 
-    int recv_bytes = recv(client_socket, request, REQ_LEN - 1, 0);
-
-    if (recv_bytes == -1) {
-       fprintf(stderr, "[ERROR] unable to receive HTTP request\n"); 
-       return;
-    }
-
-    if (recv_bytes == 0) {  /* indicates client closed connection */
-        printf("[LOG] client closed connection\n");
+    if (status == SERVER_ERR) {
         return;
     }
-
-    request[recv_bytes] = '\0'; 
 
     char method[METHOD_LEN] = { '\0' };  /* HTTP method ie. GET, POST */
     char target[TARGET_LEN] = { '\0' };  /* requested target */
@@ -366,7 +360,7 @@ void handle_http_request(int client_socket, cache_t *cache) {
 
     parse_http_request(request, method, target);
 
-    // printf("request: \n%s\n", request);
+    printf("request: \n%s\n", request);
 
     handle_http_response(client_socket, method, target, cache);
 } /* handle_http_request() */
@@ -587,3 +581,111 @@ void send_response(int fd, char *response, int size) {
         response += status;
     }
 } /* send_response() */
+
+/*
+ * This function takes in a file descriptor and a request buffer and its size
+ * and receives bytes until the entire HTTP request is read. The first loop
+ * iterates until the header's end is received and then the function uses the
+ * header's Content-Length property to calculate the remaining number of bytes
+ * to be received and receives them with the second loop.
+ */
+
+int recv_request(int fd, char *request, int size) {
+    if ((request == NULL) || (fd < 0) || (size <= 0)) {
+        fprintf(stderr, "[ERROR] error while receiving request\n");
+        return SERVER_ERR;
+    }
+
+    int status;               /* tracks return values */
+    ssize_t total_bytes = 0;  /* total number of bytes recieved thus far */
+    ssize_t bytes_recv = -1;  /* number of bytes received per call of recv() */
+
+    char *header_end = strstr(request, "\r\n\r\n");
+
+    /* keep receiving until request contains the header's end */
+
+    while ((header_end == NULL) && (total_bytes < size)) {
+        bytes_recv = recv(fd, request + total_bytes, size - total_bytes, 0);
+
+        if (bytes_recv == -1) {
+            fprintf(stderr, "[ERROR] error while receiving request\n");
+            return SERVER_ERR;
+        }
+
+        /* client closed connection before complete header */
+
+        if (bytes_recv == 0) {
+            return SERVER_ERR;
+        }
+
+        total_bytes += bytes_recv;
+        header_end = strstr(request, "\r\n\r\n");
+    }
+
+    if (header_end == NULL) {
+        fprintf(stderr, "[ERROR] request is too long\n");
+        return SERVER_ERR;
+    }
+
+    /* extract Content-Length value from header */
+
+    char *content_header = strstr(request, "Content-Length:");
+
+    /* if NULL, no body so likely GET request */
+
+    /* ensure the Content-Length is actually in the header, not in the body */
+
+    if ((content_header == NULL) || (content_header > header_end)) {
+        return total_bytes;
+    }
+
+    size_t content_len = 0;
+    status = sscanf(content_header, "Content-Length: %zu", &content_len);
+
+    if (status != 1) {
+        fprintf(stderr, "[ERROR] error while receiving request\n");
+        return SERVER_ERR;
+    }
+
+    /* some math to determine number of remaining bytes */
+
+    size_t header_len = (header_end + strlen("\r\n\r\n")) - request;
+    size_t content_received_len = total_bytes - header_len;
+    size_t remain_len = 0;
+    
+    /* stops remain_len from underflowing if received data from next request */
+
+    if (content_received_len < content_len) {
+        remain_len = content_len - content_received_len;
+    }
+
+    /* check if the request even fits in the request buffer */
+
+    if ((total_bytes + remain_len) > size) {
+        fprintf(stderr, "[ERROR] request is too long\n");
+        return SERVER_ERR;
+    }
+
+    /* receive remaining bytes */
+
+    while ((remain_len > 0) && (total_bytes < size)) {
+        bytes_recv = recv(fd, request + total_bytes, remain_len, 0);
+
+        if (bytes_recv == -1) {
+            fprintf(stderr, "[ERROR] error while receiving request\n");
+            return SERVER_ERR;
+        }
+
+        /* client closed connection before receiving remaining bytes */
+
+        if (bytes_recv == 0) {
+            fprintf(stderr, "[ERROR] error while receiving request\n");
+            return SERVER_ERR;
+        }
+
+        remain_len -= bytes_recv;
+        total_bytes += bytes_recv;
+    }
+
+    return total_bytes;
+} /* recv_request() */

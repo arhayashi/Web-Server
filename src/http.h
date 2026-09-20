@@ -13,6 +13,7 @@ int http_400(char *); //
 int http_404(char *, char *, file_cont_t **);
 int http_500(char *); //
 void parse_http_request(char *, char *, char *); // 
+int recv_request(int, char *, int);
 void send_response(int, char *, int); //
 
 #endif
