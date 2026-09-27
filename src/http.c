@@ -20,6 +20,9 @@
 #define TARGET_LEN  (1024)       /* max length of request's target */
 #define REQ_VALS_CT (2)          /* num of vals to be extrctd from valid req */
 
+#define BOUND_MAX_LEN   70
+#define BOUND_BUF_LEN   (BOUND_MAX_LEN + 1)  /* max length of delim for multipart form */
+
 #define SERVER_FILES "./root"
 #define DEFAULT_FILE "/index.html"
 #define FILE_404     SERVER_FILES "/404.html"
@@ -27,6 +30,9 @@
 #define SERVER_ERR  (-1)
 #define SERVER_WARN (0)
 #define SERVER_SUCC (1)
+
+#define STR_HELPER(x) #x      /* macro that turns str into a string */
+#define STR(x) STR_HELPER(x)
 
 #define HTTP_200(res, target, fc)                                \
                 (create_http_response(res, "HTTP/1.1 200 OK",    \
@@ -340,15 +346,13 @@ void parse_http_request(char *request, char *method, char *target) {
  */
 
 void handle_http_request(int client_socket, cache_t *cache) {
-    int status;
-
     char request[REQ_LEN] = { '\0' };
     
     /* size = REQ_LEN - 1 so the request is NUL terminated */
    
-    status = recv_request(client_socket, request, REQ_LEN - 1);
+    int req_len = recv_request(client_socket, request, REQ_LEN - 1);
 
-    if (status == SERVER_ERR) {
+    if (req_len == SERVER_ERR) {
         return;
     }
 
@@ -362,7 +366,8 @@ void handle_http_request(int client_socket, cache_t *cache) {
 
     printf("request: \n%s\n", request);
 
-    handle_http_response(client_socket, method, target, cache);
+    handle_http_response(client_socket, method, target, cache, request,
+                         req_len);
 } /* handle_http_request() */
 
 /*
@@ -370,7 +375,7 @@ void handle_http_request(int client_socket, cache_t *cache) {
  */
 
 void handle_http_response(int client_socket, char *method, char *target,
-                          cache_t *cache) {
+                          cache_t *cache, char *request, int req_len) {
     int status;
     char response[RES_LEN] = { '\0' };
 
@@ -555,9 +560,43 @@ void handle_http_response(int client_socket, char *method, char *target,
     /* posting content, send POST response */
 
     if (strcmp("POST", method) == 0) {
-        printf("[LOG] handling POST request\n");
+        printf("\n[LOG] handling POST request\n");
+        handle_post_response(response, request, req_len);
     } 
 } /* handle_http_response() */
+
+int get_boundary(char *request, char *boundary) {
+    char *boundary_start = strstr(request, "boundary=");
+
+    if (boundary_start == NULL) {
+        fprintf(stderr, "[ERROR] error while parsing request\n");
+        return SERVER_ERR;
+    }
+
+    /* STR(BOUND_MAX_LEN) turns the max boundary length into a string */
+
+    if (sscanf(boundary_start, "boundary=%" STR(BOUND_MAX_LEN) "[^\r\n]",
+               boundary) != 1) {
+        fprintf(stderr, "[ERROR] error while parsing request\n");
+        return SERVER_ERR;
+    }
+
+    return SERVER_SUCC;
+} /* get_boundary() */
+
+/*
+ * This function handles responses for POST requests.
+ */
+
+void handle_post_response(char *response, char *request, int req_len) {
+    char boundary[BOUND_BUF_LEN] = { '\0' };
+
+    if (get_boundary(request, boundary) == SERVER_ERR) {
+        return;
+    }
+
+    printf("boundary = %s\n", boundary);
+} /* handle_post_response() */
 
 /*
  * This function takes in a response and the size of a response and sends it
