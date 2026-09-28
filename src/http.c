@@ -9,9 +9,12 @@
 #include <time.h>
 
 #include "cache.h"
+#include "constants.h"
 #include "http.h"
 #include "mime.h"
 #include "process_file.h"
+#include "res.h"
+#include "req.h"
 
 #define DATE_LEN    (30)         /* length of date string in HTTP header */
 #define METHOD_LEN  (20)         /* max length of HTTP method  */
@@ -26,13 +29,6 @@
 #define SERVER_FILES "./root"
 #define DEFAULT_FILE "/index.html"
 #define FILE_404     SERVER_FILES "/404.html"
-
-#define SERVER_ERR  (-1)
-#define SERVER_WARN (0)
-#define SERVER_SUCC (1)
-
-#define STR_HELPER(x) #x      /* macro that turns str into a string */
-#define STR(x) STR_HELPER(x)
 
 #define HTTP_200(res, target, fc)                                \
                 (create_http_response(res, "HTTP/1.1 200 OK",    \
@@ -584,15 +580,32 @@ int get_boundary(char *request, char *boundary) {
     return SERVER_SUCC;
 } /* get_boundary() */
 
+
 /*
  * This function handles responses for POST requests.
  */
 
 void handle_post_response(char *response, char *request, int req_len) {
     char boundary[BOUND_BUF_LEN] = { '\0' };
+    char *header_end;
+    char *body_start;
+    size_t boundary_div_len; // boundary between data
+    size_t boundary_end_len; // indicates end of data
+    char *pos;               // current position in the data
 
     if (get_boundary(request, boundary) == SERVER_ERR) {
         return;
+    }
+
+    header_end = strstr(request, "\r\n\r\n");
+    body_start = header_end + strlen("\r\n\r\n");
+
+    boundary_div_len = strlen("--") + strlen(boundary);
+    boundary_end_len = boundary_div_len + strlen("--");
+
+
+    while (1) {
+        break;
     }
 
     printf("boundary = %s\n", boundary);
