@@ -2,7 +2,15 @@
  * This file contains 
  */
 
+#include <stdio.h>
+#include <string.h>
+
+#include "constants.h"
 #include "req.h"
+
+#define BOUNDARY_MAX_LEN 70
+#define BOUNDARY_BUF_LEN (BOUNDARY_MAX_LEN + 1)
+
 
 /*
  * This function finds the boundary string used for form data in POST requests
@@ -13,13 +21,12 @@ int get_boundary(char *request, char *boundary) {
     char *boundary_start = strstr(request, "boundary=");
 
     if (boundary_start == NULL) {
+        printf("1\n");
         fprintf(stderr, "[ERROR] error while parsing request\n");
         return SERVER_ERR;
     }
 
-    /* STR(BOUND_MAX_LEN) turns the max boundary length into a string */
-
-    if (sscanf(boundary_start, "boundary=%" STR(BOUND_MAX_LEN) "[^\r\n]",
+    if (sscanf(boundary_start, "boundary=%" STR(BOUNDARY_MAX_LEN) "[^\r\n]",
                boundary) != 1) {
         fprintf(stderr, "[ERROR] error while parsing request\n");
         return SERVER_ERR;
@@ -33,7 +40,7 @@ int get_boundary(char *request, char *boundary) {
  */
 
 void handle_post_response(char *response, char *request, int req_len) {
-    char boundary[BOUND_BUF_LEN] = { '\0' };
+    char boundary[BOUNDARY_BUF_LEN] = { '\0' };
     char *header_end;
     char *body_start;
     size_t boundary_div_len; // boundary between data
@@ -50,10 +57,14 @@ void handle_post_response(char *response, char *request, int req_len) {
     boundary_div_len = strlen("--") + strlen(boundary);
     boundary_end_len = boundary_div_len + strlen("--");
 
+    pos = strstr(request, "filename=");
+    char *filename[100]; // make into struct later
+    sscanf(pos, "filename=\"%99[^\"]", filename);
 
     while (1) {
         break;
     }
 
     printf("boundary = %s\n", boundary);
+    printf("filename = %s\n", filename);
 } /* handle_post_response() */
